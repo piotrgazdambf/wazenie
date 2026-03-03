@@ -1,0 +1,14 @@
+# Clasp – lokalna konfiguracja (scriptId); każdy developer ma własną
+.clasp.json
+
+# System / edytory
+.DS_Store
+Thumbs.db
+*.log
+.idea/
+.vscode/
+*.swp
+*~
+
+# Node (jeśli kiedyś będzie npm)
+node_modules/
