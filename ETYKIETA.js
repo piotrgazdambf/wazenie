@@ -34,14 +34,42 @@ const TEMPLATE_DIM_PROP_KEY = "RAW_LABEL_TEMPLATE_DIM_V1";
 
 /**
  * Menu w Arkuszu (wywoływane przez router onOpen w innym pliku)
+ * Z KW/KWG: otwiera dialog wyboru odmiany i generuje etykietę. Z PLS_VIEW: jak dotąd (z zaznaczonego wiersza).
  */
 function QR_onOpenMenu_() {
   SpreadsheetApp.getUi()
     .createMenu(MENU_NAME)
-    .addItem(MENU_ITEM_CREATE, "CREATE_LABEL")
+    .addItem(MENU_ITEM_CREATE, "CREATE_LABEL_OR_FROM_KW")
     .addSeparator()
     .addItem(MENU_ITEM_SAVE_TEMPLATE, "SAVE_TEMPLATE_ONCE")
     .addToUi();
+}
+
+/**
+ * Router: w KW/KWG → dialog z listą odmian (E19:E22 / E14:E17); w PLS_VIEW → CREATE_LABEL.
+ */
+function CREATE_LABEL_OR_FROM_KW() {
+  const ui = SpreadsheetApp.getUi();
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sh = ss.getActiveSheet();
+  if (!sh) {
+    ui.alert("Brak aktywnego arkusza.");
+    return;
+  }
+  const sheetName = sh.getName();
+  if (sheetName === "KW" || sheetName === "KWG") {
+    KW_QR_OPEN_DIALOG_();
+    return;
+  }
+  if (sheetName === SOURCE_SHEET_NAME) {
+    CREATE_LABEL();
+    return;
+  }
+  ui.alert(
+    "Info",
+    `Etykietę QR tworzysz z arkusza ${SOURCE_SHEET_NAME} (zaznacz LOT w kolumnie A) albo z Karty Ważenia (KW/KWG).`,
+    ui.ButtonSet.OK
+  );
 }
 
 /**
@@ -217,6 +245,114 @@ function CREATE_LABEL() {
   // DÓŁ: dostawca/nr + przeznaczenie
   shPrint.getRange("A3:C3").setValue(supplierLine);
   shPrint.getRange("A4:C4").setValue(purposeLine);
+
+  SpreadsheetApp.flush();
+  ss.setActiveSheet(shPrint);
+  shPrint.setActiveSelection("B2");
+}
+
+/**
+ * Otwiera dialog wyboru odmiany z Karty Ważenia (KW/KWG).
+ * Odmiany: KW E19:E22, KWG E14:E17. Kod etykiety: pierwsza odmiana = LOT, druga = LOT2, itd.
+ */
+function KW_QR_OPEN_DIALOG_() {
+  const ui = SpreadsheetApp.getUi();
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sh = ss.getActiveSheet();
+  if (!sh) return;
+  const sheetName = sh.getName();
+  if (sheetName !== "KW" && sheetName !== "KWG") return;
+
+  const layout = typeof getLayout_ === "function" ? getLayout_(sheetName) : null;
+  const vf = layout ? layout.varietyRowFirst : (sheetName === "KW" ? 19 : 14);
+  const vl = layout ? layout.varietyRowLast : (sheetName === "KW" ? 22 : 17);
+
+  const varieties = [];
+  for (let r = vf; r <= vl; r++) {
+    const v = String(sh.getRange("E" + r).getDisplayValue() || "").trim();
+    if (v) varieties.push(v);
+  }
+  if (!varieties.length) {
+    ui.alert("Brak odmian", "Uzupełnij odmiany w komórkach E" + vf + "–E" + vl + " w Karcie Ważenia.", ui.ButtonSet.OK);
+    return;
+  }
+
+  const baseLot = String(sh.getRange("F7:I7").getDisplayValue() || "").trim();
+  if (!baseLot) {
+    ui.alert("Brak LOT", "Uzupełnij LOT w F7:I7 w Karcie Ważenia.", ui.ButtonSet.OK);
+    return;
+  }
+  const dateText = getDateTextFromCell_(sh.getRange("F5"));
+  const supplierLine = String(sh.getRange("F6:I6").getDisplayValue() || "").trim();
+  const lotFull = baseLot;
+  const purposeName = typeof purposeFromLotFull_ === "function" ? purposeFromLotFull_(lotFull) : "";
+  const purposeLine = "Przeznaczenie: " + (purposeName || "");
+
+  const html = KW_QR_HTML_(varieties, baseLot, dateText, supplierLine, purposeLine);
+  ui.showModalDialog(HtmlService.createHtmlOutput(html).setWidth(420).setHeight(380), "Etykieta QR z Karty Ważenia");
+}
+
+function KW_QR_HTML_(varieties, baseLot, dateText, supplierLine, purposeLine) {
+  const escapeAttr = (s) => String(s || "").replace(/\\/g, "\\\\").replace(/"/g, "&quot;").replace(/'/g, "&#39;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/&/g, "&amp;");
+  const options = varieties.map((v, i) => '<option value="' + escapeAttr(v) + '" data-idx="' + i + '">' + escapeAttr(v) + '</option>').join("");
+  const baseLotEsc = escapeAttr(baseLot);
+  const dateEsc = escapeAttr(dateText);
+  const supplierEsc = escapeAttr(supplierLine);
+  const purposeEsc = escapeAttr(purposeLine);
+
+  return '<!DOCTYPE html><html><head><meta charset="utf-8"/>' +
+    '<style>' +
+    '*{box-sizing:border-box} body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;background:#f0f4f8;padding:20px;color:#1a202c}' +
+    '.box{background:#fff;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,.08);padding:20px;max-width:380px}' +
+    'h3{margin:0 0 14px 0;font-size:14px;color:#4a5568}' +
+    'select{width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;margin-bottom:12px}' +
+    '.code{margin:12px 0;padding:10px;background:#edf2f7;border-radius:6px;font-family:monospace;font-size:13px;word-break:break-all}' +
+    '.btn{width:100%;padding:12px;background:linear-gradient(135deg,#1e3a5f,#2d5a87);color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;margin-top:16px}' +
+    '.btn:hover{opacity:.95}' +
+    '</style></head><body><div class="box">' +
+    '<h3>Wybierz odmianę</h3>' +
+    '<select id="sel">' + options + '</select>' +
+    '<div class="code" id="codePreview">Kod etykiety: ' + escapeAttr(baseLot) + '</div>' +
+    '<input type="hidden" id="baseLot" value="' + baseLotEsc + '"/>' +
+    '<input type="hidden" id="dateText" value="' + dateEsc + '"/>' +
+    '<input type="hidden" id="supplierLine" value="' + supplierEsc + '"/>' +
+    '<input type="hidden" id="purposeLine" value="' + purposeEsc + '"/>' +
+    '<button type="button" class="btn" id="btnSend">Prześlij</button>' +
+    '</div><script>' +
+    'var sel=document.getElementById("sel");var code=document.getElementById("codePreview");var base=document.getElementById("baseLot").value;' +
+    'function lotForIdx(i){return base+(i===0?"":String(i+1));}' +
+    'function updatePreview(){var i=parseInt(sel.options[sel.selectedIndex].getAttribute("data-idx"),10);code.textContent="Kod etykiety: "+lotForIdx(i);}' +
+    'sel.onchange=updatePreview;updatePreview();' +
+    'document.getElementById("btnSend").onclick=function(){' +
+    'var variety=sel.options[sel.selectedIndex].value;var i=parseInt(sel.options[sel.selectedIndex].getAttribute("data-idx"),10);var lot=lotForIdx(i);' +
+    'google.script.run.withSuccessHandler(function(){google.script.host.close();}).withFailureHandler(function(e){alert("Błąd: "+(e&&e.message?e.message:String(e)));})' +
+    '.APPLY_LABEL_FROM_KW_(variety,lot,document.getElementById("dateText").value,document.getElementById("supplierLine").value,document.getElementById("purposeLine").value);' +
+    '};</script></body></html>';
+}
+
+/**
+ * Zapisuje etykietę na ETYKIETASUROWCOWA (jak CREATE_LABEL) i zeruje licznik następnej dostawy (WSG C4 = 0001).
+ */
+function APPLY_LABEL_FROM_KW_(varietyText, lotForLabel, dateText, supplierLine, purposeLine) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const shPrint = getOrCreateSheet_(ss, PRINT_SHEET_NAME);
+
+  const ok = RESTORE_TEMPLATE_();
+  if (!ok) throw new Error("Najpierw zapisz formatkę: Stwórz QR → Zapisz formatkę (raz).");
+
+  shPrint.getRange("B1").setValue(String(varietyText || "").trim());
+  shPrint.getRange("A2").setValue(String(lotForLabel || "").trim());
+  shPrint.getRange("B2").setFormula(qrFromA2FormulaPL_(QR_DISPLAY_SIZE_PX, QR_FETCH_SIZE_PX, QR_MARGIN));
+  shPrint.getRange("C2").setValue(String(dateText || "").trim());
+  shPrint.getRange("A3:C3").setValue(String(supplierLine || "").trim());
+  shPrint.getRange("A4:C4").setValue(String(purposeLine || "").trim());
+
+  const shWSG = ss.getSheetByName("WSG");
+  if (shWSG) {
+    const c4 = shWSG.getRange("C4");
+    c4.setValue(1);
+    c4.setNumberFormat("0000");
+  }
 
   SpreadsheetApp.flush();
   ss.setActiveSheet(shPrint);
