@@ -1,6 +1,3 @@
-# Clasp – lokalna konfiguracja (scriptId); każdy developer ma własną
-.clasp.json
-
 # System / edytory
 .DS_Store
 Thumbs.db

@@ -10,7 +10,19 @@ Projekt Google Apps Script dla arkusza **(WSGiB) Ważenie Surowca - Generator i 
 - **ETYKIETA.js**, **PDRS.js** – etykiety i raporty
 - **appsscript.json** – manifest Apps Script
 
-Deploy: `clasp push` (w katalogu projektu, po `clasp login` i skonfigurowanym `.clasp.json`).
+Deploy: **clasp + repo w jednym** (po jednorazowym logowaniu):
+
+```bash
+npm install
+npx clasp login
+npm run sync
+```
+
+- **`npm run push:gas`** – tylko wypchnij do Google Apps Script (clasp push)
+- **`npm run pull:gas`** – tylko ściągnij z GAS (clasp pull)
+- **`npm run sync`** – wypchnij do GAS, potem do GitHub (clasp push + git commit + git push)
+
+Plik **`.clasp.json`** (scriptId projektu) jest w repo – projekt GAS i GitHub są podłączone pod ten sam skrypt.
 
 ---
 
@@ -48,4 +60,4 @@ Deploy: `clasp push` (w katalogu projektu, po `clasp login` i skonfigurowanym `.
   ```
   Zastąp `TWOJ_LOGIN` i `nazwa-repo` swoim kontem GitHub i nazwą repozytorium.
 
-**Uwaga:** Plik `.clasp.json` jest w `.gitignore` – nie trafi na GitHub (zawiera Twój scriptId). Po sklonowaniu repozytorium trzeba go utworzyć lokalnie i zrobić `clasp clone <scriptId>` lub dodać własny `.clasp.json`.
+**Uwaga:** Po sklonowaniu repozytorium wykonaj `npm install` i (raz) `npx clasp login`. Potem `npm run sync` wypycha zmiany i do GAS, i na GitHub.

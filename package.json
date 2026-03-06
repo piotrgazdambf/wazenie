@@ -1,0 +1,13 @@
+{
+  "name": "wazenie",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "push:gas": "clasp push",
+    "pull:gas": "clasp pull",
+    "sync": "clasp push && git add -A && (git diff --cached --quiet || (git commit -m \"sync z GAS\" && git push origin main))"
+  },
+  "devDependencies": {
+    "@google/clasp": "^3.0.4"
+  }
+}
