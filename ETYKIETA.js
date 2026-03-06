@@ -40,6 +40,7 @@ function QR_onOpenMenu_() {
   SpreadsheetApp.getUi()
     .createMenu(MENU_NAME)
     .addItem(MENU_ITEM_CREATE, "CREATE_LABEL_OR_FROM_KW")
+    .addItem("Etykieta QR z Karty Ważenia (wybierz odmianę)", "KW_QR_OPEN_DIALOG_")
     .addSeparator()
     .addItem(MENU_ITEM_SAVE_TEMPLATE, "SAVE_TEMPLATE_ONCE")
     .addToUi();
@@ -57,7 +58,7 @@ function CREATE_LABEL_OR_FROM_KW() {
     return;
   }
   const sheetName = sh.getName();
-  const sheetUpper = sheetName.toUpperCase();
+  const sheetUpper = String(sheetName || "").trim().toUpperCase();
   if (sheetUpper === "KW" || sheetUpper === "KWG") {
     KW_QR_OPEN_DIALOG_();
     return;
@@ -180,7 +181,7 @@ function CREATE_LABEL() {
   if (!sh) return ui.alert("Brak aktywnego arkusza.");
 
   const sheetName = sh.getName();
-  const sheetUpper = (sheetName || "").toUpperCase();
+  const sheetUpper = String(sheetName || "").trim().toUpperCase();
   // Gdy wywołano z KW/KWG (np. stare menu) – przekieruj do dialogu z listą odmian
   if (sheetUpper === "KW" || sheetUpper === "KWG") {
     KW_QR_OPEN_DIALOG_();
@@ -190,7 +191,7 @@ function CREATE_LABEL() {
   if (sheetName !== SOURCE_SHEET_NAME) {
     ui.alert(
       "Info",
-      `Etykietę QR tworzysz tylko z arkusza ${SOURCE_SHEET_NAME}. Przejdź do ${SOURCE_SHEET_NAME} i zaznacz LOT w kolumnie A.`,
+      "Aktywny arkusz: \"" + (sheetName || "") + "\".\n\nEtykietę QR tworzysz z arkusza " + SOURCE_SHEET_NAME + " (zaznacz LOT w kolumnie A) albo z Karty Ważenia (KW/KWG).",
       ui.ButtonSet.OK
     );
     return;
@@ -269,8 +270,11 @@ function KW_QR_OPEN_DIALOG_() {
   const sh = ss.getActiveSheet();
   if (!sh) return;
   const sheetName = sh.getName();
-  const sheetUpper = sheetName.toUpperCase();
-  if (sheetUpper !== "KW" && sheetUpper !== "KWG") return;
+  const sheetUpper = String(sheetName || "").trim().toUpperCase();
+  if (sheetUpper !== "KW" && sheetUpper !== "KWG") {
+    SpreadsheetApp.getUi().alert("Info", "Otwórz arkusz KW lub KWG i wybierz ponownie: Stwórz QR → Etykieta QR z Karty Ważenia.", SpreadsheetApp.getUi().ButtonSet.OK);
+    return;
+  }
 
   const layout = typeof getLayout_ === "function" ? getLayout_(sheetUpper) : null;
   const vf = layout ? layout.varietyRowFirst : (sheetUpper === "KW" ? 19 : 14);
