@@ -345,13 +345,13 @@ function KW_QR_HTML_(varieties, baseLot, dateText, supplierLine, purposeLine) {
 
 /**
  * Zapisuje etykietę na ETYKIETASUROWCOWA (jak CREATE_LABEL) i zeruje licznik następnej dostawy (WSG C4 = 0001).
+ * Gdy brak zapisanej formatki – i tak wpisuje dane i przełącza na arkusz etykiet (możesz zapisać formatkę później).
  */
 function APPLY_LABEL_FROM_KW_(varietyText, lotForLabel, dateText, supplierLine, purposeLine) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const shPrint = getOrCreateSheet_(ss, PRINT_SHEET_NAME);
 
-  const ok = RESTORE_TEMPLATE_();
-  if (!ok) throw new Error("Najpierw zapisz formatkę: Stwórz QR → Zapisz formatkę (raz).");
+  RESTORE_TEMPLATE_(); // jeśli formatka zapisana – przywróć; jeśli nie – nic, i tak wpisujemy dane
 
   shPrint.getRange("B1").setValue(String(varietyText || "").trim());
   shPrint.getRange("A2").setValue(String(lotForLabel || "").trim());
@@ -370,6 +370,7 @@ function APPLY_LABEL_FROM_KW_(varietyText, lotForLabel, dateText, supplierLine, 
   SpreadsheetApp.flush();
   ss.setActiveSheet(shPrint);
   shPrint.setActiveSelection("B2");
+  ss.toast("Etykieta wpisana. Przełączono na arkusz „" + PRINT_SHEET_NAME + "\".", "QR z KW", 4);
 }
 
 /**
