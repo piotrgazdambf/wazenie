@@ -180,6 +180,13 @@ function CREATE_LABEL() {
   if (!sh) return ui.alert("Brak aktywnego arkusza.");
 
   const sheetName = sh.getName();
+  const sheetUpper = (sheetName || "").toUpperCase();
+  // Gdy wywołano z KW/KWG (np. stare menu) – przekieruj do dialogu z listą odmian
+  if (sheetUpper === "KW" || sheetUpper === "KWG") {
+    KW_QR_OPEN_DIALOG_();
+    return;
+  }
+
   if (sheetName !== SOURCE_SHEET_NAME) {
     ui.alert(
       "Info",
