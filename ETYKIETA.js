@@ -57,7 +57,8 @@ function CREATE_LABEL_OR_FROM_KW() {
     return;
   }
   const sheetName = sh.getName();
-  if (sheetName === "KW" || sheetName === "KWG") {
+  const sheetUpper = sheetName.toUpperCase();
+  if (sheetUpper === "KW" || sheetUpper === "KWG") {
     KW_QR_OPEN_DIALOG_();
     return;
   }
@@ -261,11 +262,12 @@ function KW_QR_OPEN_DIALOG_() {
   const sh = ss.getActiveSheet();
   if (!sh) return;
   const sheetName = sh.getName();
-  if (sheetName !== "KW" && sheetName !== "KWG") return;
+  const sheetUpper = sheetName.toUpperCase();
+  if (sheetUpper !== "KW" && sheetUpper !== "KWG") return;
 
-  const layout = typeof getLayout_ === "function" ? getLayout_(sheetName) : null;
-  const vf = layout ? layout.varietyRowFirst : (sheetName === "KW" ? 19 : 14);
-  const vl = layout ? layout.varietyRowLast : (sheetName === "KW" ? 22 : 17);
+  const layout = typeof getLayout_ === "function" ? getLayout_(sheetUpper) : null;
+  const vf = layout ? layout.varietyRowFirst : (sheetUpper === "KW" ? 19 : 14);
+  const vl = layout ? layout.varietyRowLast : (sheetUpper === "KW" ? 22 : 17);
 
   const varieties = [];
   for (let r = vf; r <= vl; r++) {
