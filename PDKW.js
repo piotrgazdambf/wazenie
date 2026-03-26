@@ -39,6 +39,7 @@ function PDKW() {
     if (!shPLS) throw new Error("Brak arkusza: PLS");
 
     const SUPPLIER_GROJECKA = "GRÓJECKA MBF";
+    const SUPPLIER_MBF = "MBF";
     const SUPPLIER_RYLEX = "RYLEX";
     /** Owoc w F4: tylko te wartości prowadzą do arkusza KW; wszystko inne (marchewka, mango, itd.) → KWG */
     const FRUITS_TO_KW = ["jabłko", "gruszka", "jablko"];
@@ -119,14 +120,23 @@ function PDKW() {
     }
 
     // ===== wybór KW / KWG =====
-    // 1) Dostawca GRÓJECKA MBF → zawsze KWG
-    // 2) Owoc (F4) inny niż Jabłko/Gruszka (np. marchewka, mango) → KWG
+    // 1) Checkbox K3 (RYLEX) lub L3 (GRÓJECKA) zaznaczony -> zawsze KWG
+    // 2) Dostawca GRÓJECKA MBF / MBF / RYLEX -> zawsze KWG
+    // 3) Owoc (F4) inny niż Jabłko/Gruszka (np. marchewka, mango) -> KWG
+    const forceKWG_RYLEX = !!shWSG.getRange("K3").getValue();
+    const forceKWG_GROJECKA = !!shWSG.getRange("L3").getValue();
     const fruitNorm = String(fruitName || "").toLowerCase().replace(/\s+/g, " ").trim();
     const isFruitForKW = FRUITS_TO_KW.some(f => fruitNorm === f);
-    const isKWG = (supplierName === SUPPLIER_GROJECKA) || !isFruitForKW;
+    const isKWG =
+      forceKWG_RYLEX ||
+      forceKWG_GROJECKA ||
+      supplierName === SUPPLIER_GROJECKA ||
+      supplierName === SUPPLIER_MBF ||
+      supplierName === SUPPLIER_RYLEX ||
+      !isFruitForKW;
     let shDestKW = isKWG ? shKWG : shKW;
     if (isKWG && !shKWG) {
-      throw new Error('Brak arkusza: KWG (wymagany dla GRÓJECKA MBF lub gdy w F4 wybrano owoc inny niż Jabłko/Gruszka).');
+      throw new Error('Brak arkusza: KWG (wymagany dla RYLEX/GRÓJECKA/MBF, przy zaznaczonym K3/L3 lub gdy w F4 wybrano owoc inny niż Jabłko/Gruszka).');
     }
 
     // ===== RYLEX – wymagany J3 =====
