@@ -1002,6 +1002,8 @@ function clearAfterExport_KeepFormulas_(sh) {
 
   clearValuesPreserveFormulas_(sh.getRange("E" + vf + ":G" + vl));
   clearValuesPreserveFormulas_(sh.getRange("J" + vf + ":K" + vl));
+  // KWG: dodatkowe skrzynie MBF w L/M też czyścimy po eksporcie
+  clearValuesPreserveFormulas_(sh.getRange("L" + vf + ":M" + vl));
 
   qs.forEach(s => clearValuesPreserveFormulas_(sh.getRange("E" + s + ":E" + (s + 3))));
   clearValuesPreserveFormulas_(sh.getRange("M1"));
