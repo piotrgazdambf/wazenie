@@ -245,34 +245,37 @@ function PDKW() {
 
     // PLS: wiersze dopisuje tylko "Prześlij kartę ważenia" (appendVarietyRowsToPLS_) z pełnymi danymi i znormalizowanym LOT – tu nic nie dopisujemy
 
-    // ===== AUTO-NUMER: następny numer w C4 =====
-    const digitsOnly = delivNoRaw.replace(/[^\d]/g, "");
-    const currentNum = parseInt(digitsOnly, 10);
-    let nextNum = isNaN(currentNum) ? 1 : (currentNum + 1);
-    if (nextNum > 9999) nextNum = 1;
+    // ===== AUTO-NUMER: następny numer w C4 (tylko gdy K3/L3 NIE zaznaczone) =====
+    const manualMode = !!shWSG.getRange("K3").getValue() || !!shWSG.getRange("L3").getValue();
+    if (!manualMode) {
+      const digitsOnly = delivNoRaw.replace(/[^\d]/g, "");
+      const currentNum = parseInt(digitsOnly, 10);
+      let nextNum = isNaN(currentNum) ? 1 : (currentNum + 1);
+      if (nextNum > 9999) nextNum = 1;
 
-    c4Cell.setValue(nextNum);
-    c4Cell.setNumberFormat("0000");
-    c4Cell.setDataValidation(
-      SpreadsheetApp.newDataValidation()
-        .requireNumberBetween(1, 9999)
-        .setAllowInvalid(false)
-        .build()
-    );
+      c4Cell.setValue(nextNum);
+      c4Cell.setNumberFormat("0000");
+      c4Cell.setDataValidation(
+        SpreadsheetApp.newDataValidation()
+          .requireNumberBetween(1, 9999)
+          .setAllowInvalid(false)
+          .build()
+      );
 
-    // ===== ochrona warning-only na C4 =====
-    try {
-      const protections = shWSG.getProtections(SpreadsheetApp.ProtectionType.RANGE);
-      protections.forEach(p => {
-        const r = p.getRange();
-        if (r && r.getA1Notation && r.getA1Notation() === "C4") {
-          try { p.remove(); } catch (e) { if (e && (e.message || e.toString)) Logger.log("PDKW protection remove: " + (e.message || e.toString())); }
-        }
-      });
-      const p = c4Cell.protect();
-      p.setDescription("AUTO NR DOSTAWY (nie edytować ręcznie)");
-      p.setWarningOnly(true);
-    } catch (e) { if (e && (e.message || e.toString)) Logger.log("PDKW C4 protect: " + (e.message || e.toString())); }
+      // ===== ochrona warning-only na C4 =====
+      try {
+        const protections = shWSG.getProtections(SpreadsheetApp.ProtectionType.RANGE);
+        protections.forEach(p => {
+          const r = p.getRange();
+          if (r && r.getRange && r.getA1Notation && r.getA1Notation() === "C4") {
+            try { p.remove(); } catch (e) { if (e && (e.message || e.toString)) Logger.log("PDKW protection remove: " + (e.message || e.toString())); }
+          }
+        });
+        const p = c4Cell.protect();
+        p.setDescription("AUTO NR DOSTAWY (nie edytować ręcznie)");
+        p.setWarningOnly(true);
+      } catch (e) { if (e && (e.message || e.toString)) Logger.log("PDKW C4 protect: " + (e.message || e.toString())); }
+    }
 
     // ===== Czyść po wysyłce: B4, D4, E4, F4 =====
     const inputRange = shWSG.getRange("B4:F4");
@@ -310,6 +313,74 @@ function PDKW() {
   } finally {
     try { lock.releaseLock(); } catch (e) { if (e && (e.message || e.toString)) Logger.log("PDKW releaseLock: " + (e.message || e.toString())); }
   }
+}
+
+/**
+ * WSG K3/L3 (checkboxy):
+ * - jeśli zaznaczony K3 lub L3 -> C4 czyścimy i umożliwiamy wpis ręczny
+ * - jeśli oba odznaczone -> przywracamy poprzednią wartość C4 (sprzed zaznaczenia)
+ */
+function PDKW_WSG_onEdit_(e) {
+  if (!e || !e.range) return;
+  const sh = e.range.getSheet();
+  if (!sh || sh.getName() !== "WSG") return;
+
+  const row = e.range.getRow();
+  const col = e.range.getColumn();
+  const isSwitchCell = (row === 3 && (col === 11 || col === 12)); // K3/L3
+  if (!isSwitchCell) return;
+
+  const props = PropertiesService.getDocumentProperties();
+  const key = "WSG_C4_BEFORE_MANUAL_MODE";
+  const c4 = sh.getRange("C4");
+  const manualMode = !!sh.getRange("K3").getValue() || !!sh.getRange("L3").getValue();
+
+  const removeC4Protections_ = () => {
+    try {
+      const protections = sh.getProtections(SpreadsheetApp.ProtectionType.RANGE);
+      protections.forEach(p => {
+        const r = p.getRange();
+        if (r && r.getA1Notation && r.getA1Notation() === "C4") {
+          try { p.remove(); } catch (err) { if (err && (err.message || err.toString)) Logger.log("PDKW_WSG_onEdit_ remove protection: " + (err.message || err.toString())); }
+        }
+      });
+    } catch (err) {
+      if (err && (err.message || err.toString)) Logger.log("PDKW_WSG_onEdit_ protections: " + (err.message || err.toString()));
+    }
+  };
+
+  if (manualMode) {
+    // zapisz poprzednią wartość tylko raz (pierwsze wejście w tryb ręczny)
+    if (!props.getProperty(key)) {
+      props.setProperty(key, String(c4.getDisplayValue() || "").trim());
+    }
+    removeC4Protections_();
+    c4.clearDataValidations();
+    c4.setValue("");
+    SpreadsheetApp.flush();
+    return;
+  }
+
+  // oba odznaczone -> wróć do auto i przywróć wartość sprzed trybu ręcznego
+  const prev = String(props.getProperty(key) || "").trim();
+  if (prev !== "") c4.setValue(prev);
+  c4.setNumberFormat("0000");
+  c4.setDataValidation(
+    SpreadsheetApp.newDataValidation()
+      .requireNumberBetween(1, 9999)
+      .setAllowInvalid(false)
+      .build()
+  );
+  removeC4Protections_();
+  try {
+    const p = c4.protect();
+    p.setDescription("AUTO NR DOSTAWY (nie edytować ręcznie)");
+    p.setWarningOnly(true);
+  } catch (err) {
+    if (err && (err.message || err.toString)) Logger.log("PDKW_WSG_onEdit_ protect C4: " + (err.message || err.toString()));
+  }
+  props.deleteProperty(key);
+  SpreadsheetApp.flush();
 }
 
 /**

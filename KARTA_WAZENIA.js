@@ -25,7 +25,7 @@
  *   KWG: 18–39
  **************************************************************************************/
 
-/** KONFIG */
+/** KONFIG – folder i MCR muszą być udostępnione każdemu kontu, które ma korzystać ze skryptu */
 const KW_EXPORT_CONFIG = {
   PARENT_FOLDER_ID: "1IyBg4JjXiKx1RSH5zKOIZ9N2zlONHRhh",
 
@@ -65,6 +65,7 @@ function onOpen(e) {
 function onEdit(e) {
   try { KW_onEdit_AutoBlocks_(e); } catch (err) {}
   try { if (typeof TABLEKW_onEdit_ === "function") TABLEKW_onEdit_(e); } catch (err) {}
+  try { if (typeof PDKW_WSG_onEdit_ === "function") PDKW_WSG_onEdit_(e); } catch (err) {}
 }
 
 /******************* MENU: KARTA WAŻENIA *******************/
@@ -418,9 +419,19 @@ function KW_EXPORT_CREATE_FILE_FROM_KW_AND_SELECT_IN_VIEW() {
 
     const fileName = sanitizeFileName_(logicalName);
 
-    // 6) Utwórz plik i przenieś do folderu miesiąca
-    const parentFolder = DriveApp.getFolderById(KW_EXPORT_CONFIG.PARENT_FOLDER_ID);
-    const monthFolder = getOrCreateMonthFolder_(parentFolder, now);
+    // 6) Utwórz plik i przenieś do folderu miesiąca (wymaga udostępnienia folderu wszystkim użytkownikom skryptu)
+    let parentFolder, monthFolder;
+    try {
+      parentFolder = DriveApp.getFolderById(KW_EXPORT_CONFIG.PARENT_FOLDER_ID);
+      monthFolder = getOrCreateMonthFolder_(parentFolder, now);
+    } catch (e) {
+      ui.alert(
+        "Brak uprawnień",
+        "Ten skrypt wymaga dostępu do folderu na Dysku Google (eksport Kart Ważenia).\n\nPoproś właściciela arkusza o udostępnienie folderu eksportu Twojemu kontu z uprawnieniem do dodawania plików.",
+        ui.ButtonSet.OK
+      );
+      return;
+    }
 
     const newSS = SpreadsheetApp.create(fileName);
     const newFile = DriveApp.getFileById(newSS.getId());
@@ -757,7 +768,11 @@ function STANY_PRZESLIJ_DO_STANOW() {
     }
   } catch (e) {
     if (e && (e.message || e.toString)) Logger.log("STANY MCR append: " + (e.message || e.toString()));
-    ss.toast("Dodano do Stanów. Raport MCR: brak dostępu do zewnętrznego pliku.", "Stany", 5);
+    SpreadsheetApp.getUi().alert(
+      "Brak uprawnień",
+      "Dodano wiersz do Stanów w tym arkuszu, ale nie udało się dopisać do Raportu Akcji Surowca (MCR).\n\nPoproś właściciela arkusza o udostępnienie zewnętrznego pliku „Raport Akcji Surowca” Twojemu kontu.",
+      SpreadsheetApp.getUi().ButtonSet.OK
+    );
   }
 
   // STATUS zawsze w PLS, w kolumnie K wiersza z tym LOT (z PLS_VIEW szukamy tego samego wiersza w PLS)
