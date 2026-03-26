@@ -112,7 +112,12 @@ function PDKW() {
 
     const supplierName = String(shWSG.getRange("D4").getDisplayValue() || "").trim();
     const purposeName  = String(shWSG.getRange("E4").getDisplayValue() || "").trim();
-    const fruitName    = String(shWSG.getRange("F4").getDisplayValue() || "").trim();
+    let fruitName      = String(shWSG.getRange("F4").getDisplayValue() || "").trim();
+    const forceRylexByCheckbox = !!shWSG.getRange("K3").getValue();
+    if (forceRylexByCheckbox || supplierName === SUPPLIER_RYLEX) {
+      fruitName = "Jabłko";
+      try { shWSG.getRange("F4").setValue("Jabłko"); } catch (e) { if (e && (e.message || e.toString)) Logger.log("PDKW force Jabłko F4: " + (e.message || e.toString())); }
+    }
 
     if (!dispDate || !delivNoRaw || !supplierName || !purposeName) {
       ss.toast("PDKW: uzupełnij WSG!B4 (data), C4 (nr dostawy), D4 (dostawca), E4 (przeznaczenie).", "Brak danych", 6);
@@ -338,7 +343,9 @@ function PDKW_WSG_onEdit_(e) {
   const row = e.range.getRow();
   const col = e.range.getColumn();
   const isSwitchCell = (row === 3 && (col === 11 || col === 12)); // K3/L3
-  if (!isSwitchCell) return;
+  const isSupplierCell = (row === 4 && col === 4); // D4
+  const isFruitCell = (row === 4 && col === 6); // F4
+  if (!isSwitchCell && !isSupplierCell && !isFruitCell) return;
 
   const props = PropertiesService.getDocumentProperties();
   const key = "WSG_C4_BEFORE_MANUAL_MODE";
@@ -359,38 +366,51 @@ function PDKW_WSG_onEdit_(e) {
     }
   };
 
-  if (manualMode) {
-    // zapisz poprzednią wartość tylko raz (pierwsze wejście w tryb ręczny)
-    if (!props.getProperty(key)) {
-      props.setProperty(key, String(c4.getDisplayValue() || "").trim());
+  if (isSwitchCell) {
+    if (manualMode) {
+      // zapisz poprzednią wartość tylko raz (pierwsze wejście w tryb ręczny)
+      if (!props.getProperty(key)) {
+        props.setProperty(key, String(c4.getDisplayValue() || "").trim());
+      }
+      removeC4Protections_();
+      c4.clearDataValidations();
+      c4.setValue("");
+      SpreadsheetApp.flush();
+    } else {
+      // oba odznaczone -> wróć do auto i przywróć wartość sprzed trybu ręcznego
+      const prev = String(props.getProperty(key) || "").trim();
+      if (prev !== "") c4.setValue(prev);
+      c4.setNumberFormat("0000");
+      c4.setDataValidation(
+        SpreadsheetApp.newDataValidation()
+          .requireNumberBetween(1, 9999)
+          .setAllowInvalid(false)
+          .build()
+      );
+      removeC4Protections_();
+      try {
+        const p = c4.protect();
+        p.setDescription("AUTO NR DOSTAWY (nie edytować ręcznie)");
+        p.setWarningOnly(true);
+      } catch (err) {
+        if (err && (err.message || err.toString)) Logger.log("PDKW_WSG_onEdit_ protect C4: " + (err.message || err.toString()));
+      }
+      props.deleteProperty(key);
+      SpreadsheetApp.flush();
     }
-    removeC4Protections_();
-    c4.clearDataValidations();
-    c4.setValue("");
-    SpreadsheetApp.flush();
-    return;
   }
 
-  // oba odznaczone -> wróć do auto i przywróć wartość sprzed trybu ręcznego
-  const prev = String(props.getProperty(key) || "").trim();
-  if (prev !== "") c4.setValue(prev);
-  c4.setNumberFormat("0000");
-  c4.setDataValidation(
-    SpreadsheetApp.newDataValidation()
-      .requireNumberBetween(1, 9999)
-      .setAllowInvalid(false)
-      .build()
-  );
-  removeC4Protections_();
-  try {
-    const p = c4.protect();
-    p.setDescription("AUTO NR DOSTAWY (nie edytować ręcznie)");
-    p.setWarningOnly(true);
-  } catch (err) {
-    if (err && (err.message || err.toString)) Logger.log("PDKW_WSG_onEdit_ protect C4: " + (err.message || err.toString()));
+  // RYLEX: K3 zaznaczone LUB dostawca D4 = RYLEX -> F4 zawsze "Jabłko"
+  const supplier = String(sh.getRange("D4").getDisplayValue() || "").trim().toUpperCase();
+  const forceJablko = !!sh.getRange("K3").getValue() || supplier === "RYLEX";
+  if (forceJablko) {
+    const f4 = sh.getRange("F4");
+    const fruit = String(f4.getDisplayValue() || "").trim();
+    if (fruit !== "Jabłko" && fruit !== "Jablko") {
+      f4.setValue("Jabłko");
+      SpreadsheetApp.getActiveSpreadsheet().toast("Dla RYLEX owoc jest zablokowany: Jabłko.", "WSG", 3);
+    }
   }
-  props.deleteProperty(key);
-  SpreadsheetApp.flush();
 }
 
 /**
