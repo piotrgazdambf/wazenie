@@ -547,9 +547,7 @@ function appendVarietyRowsToPLS_(ss, kw, exportUrl, deliveryNo, supplierName) {
     const r = vf + i;
     const variety = String(kw.getRange("E" + r).getDisplayValue() || "").trim();
     if (!variety) continue;
-    const jv = String(kw.getRange("J" + r).getDisplayValue() || "").trim();
-    const kv = String(kw.getRange("K" + r).getDisplayValue() || "").trim();
-    const crates = (jv !== "" && kv !== "") ? (jv + "/" + kv) : "";
+    const crates = cratesForExport_(kw, r);
     const afterRaw = String(kw.getRange(nettoAfterCells[i]).getDisplayValue() || "").trim();
     const afterNum = extractNumber_(afterRaw);
     const wagaNetto = afterNum ? (normalizeIntKg_(afterNum) + " kg") : "";
@@ -812,12 +810,33 @@ function getVarietyCratesPairs_(kw) {
     const variety = String(kw.getRange("E" + r).getDisplayValue() || "").trim();
     if (!variety) continue;
 
-    const jv = String(kw.getRange("J" + r).getDisplayValue() || "").trim();
-    const kv = String(kw.getRange("K" + r).getDisplayValue() || "").trim();
-    const crates = (jv !== "" && kv !== "") ? (jv + "/" + kv) : "";
+    const crates = cratesForExport_(kw, r);
     out.push({ variety, crates });
   }
   return out;
+}
+
+/** Dla KWG: skrzynie eksportujemy jako (J-L)/(K-M). Dla KW: bez zmian J/K. */
+function cratesForExport_(kw, rowNo) {
+  const sheetName = kw.getName();
+  const jRaw = String(kw.getRange("J" + rowNo).getDisplayValue() || "").trim();
+  const kRaw = String(kw.getRange("K" + rowNo).getDisplayValue() || "").trim();
+  if (jRaw === "" || kRaw === "") return "";
+
+  if (sheetName !== "KWG") return jRaw + "/" + kRaw;
+
+  const lRaw = String(kw.getRange("L" + rowNo).getDisplayValue() || "").trim();
+  const mRaw = String(kw.getRange("M" + rowNo).getDisplayValue() || "").trim();
+
+  const toNum = (s) => {
+    const n = parseFloat(String(s || "").replace(",", "."));
+    return isNaN(n) ? 0 : n;
+  };
+  const toIntStr = (n) => String(Math.max(0, Math.round(n)));
+
+  const jOut = toNum(jRaw) - toNum(lRaw);
+  const kOut = toNum(kRaw) - toNum(mRaw);
+  return toIntStr(jOut) + "/" + toIntStr(kOut);
 }
 
 function purposeFromLotFull_(lotText) {
@@ -867,8 +886,6 @@ function appendVarietyRowsToPS_(ss, kw) {
   const nrDostawy = extractLotCodeOnly_(lotFull);
 
   const varCells = ["E" + vf, "E" + (vf + 1), "E" + (vf + 2), "E" + (vf + 3)];
-  const jCrateCells = ["J" + vf, "J" + (vf + 1), "J" + (vf + 2), "J" + (vf + 3)];
-  const kCrateCells = ["K" + vf, "K" + (vf + 1), "K" + (vf + 2), "K" + (vf + 3)];
   const brixCells = qs.map(s => "E" + s);
   const twardCells = tr.map(r => "E" + r);
   const kaliberCells = qs.map(s => "E" + (s + 3));
@@ -880,10 +897,8 @@ function appendVarietyRowsToPS_(ss, kw) {
     const variety = String(kw.getRange(varCells[i]).getDisplayValue() || "").trim();
     if (!variety) continue;
 
-    // skrzynie jako J/K
-    const jv = String(kw.getRange(jCrateCells[i]).getDisplayValue() || "").trim();
-    const kv = String(kw.getRange(kCrateCells[i]).getDisplayValue() || "").trim();
-    const crates = (jv !== "" && kv !== "") ? (jv + "/" + kv) : "";
+    // skrzynie: KW=J/K, KWG=(J-L)/(K-M)
+    const crates = cratesForExport_(kw, vf + i);
 
     // WAGA NETTO po zwrocie
     const afterRaw = String(kw.getRange(nettoAfterCells[i]).getDisplayValue() || "").trim();
