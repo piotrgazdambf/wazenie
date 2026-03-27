@@ -16,6 +16,37 @@
  *************************************************************************************************************************/
 
 function PDKW() {
+  const ui = SpreadsheetApp.getUi();
+  const html = PDKW_LOADING_HTML_();
+  ui.showModalDialog(HtmlService.createHtmlOutput(html).setWidth(420).setHeight(180), "PDKW");
+}
+
+function PDKW_LOADING_HTML_() {
+  return '<!DOCTYPE html><html><head><meta charset="utf-8"/>' +
+    '<style>' +
+    'body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;background:#f3f5f8;color:#1f2937}' +
+    '.wrap{padding:18px}' +
+    '.title{font-size:14px;font-weight:600;margin-bottom:10px}' +
+    '.bar{height:14px;background:#e5e7eb;border-radius:8px;overflow:hidden}' +
+    '.fill{height:100%;width:0;background:linear-gradient(90deg,#2563eb,#1d4ed8);transition:width .08s linear}' +
+    '.txt{margin-top:10px;font-size:12px;color:#4b5563}' +
+    '</style></head><body><div class="wrap">' +
+    '<div class="title">Trwa przesyłanie danych PDKW...</div>' +
+    '<div class="bar"><div id="fill" class="fill"></div></div>' +
+    '<div id="txt" class="txt">Uruchamianie...</div>' +
+    '</div><script>' +
+    'var done=false,start=Date.now(),dur=5000;' +
+    'var fill=document.getElementById("fill"),txt=document.getElementById("txt");' +
+    'function tick(){var p=Math.min(100,Math.round(((Date.now()-start)/dur)*100));fill.style.width=p+"%";' +
+    'if(p<100){txt.textContent="Przetwarzanie... "+p+"%";setTimeout(tick,80);}else{txt.textContent=done?"Gotowe. Zamykanie...":"Finalizowanie...";if(done)setTimeout(function(){google.script.host.close();},250);}}' +
+    'tick();' +
+    'google.script.run.withSuccessHandler(function(){done=true;if(Date.now()-start>=dur){txt.textContent="Gotowe. Zamykanie...";setTimeout(function(){google.script.host.close();},250);}})' +
+    '.withFailureHandler(function(e){var m=(e&&e.message)?e.message:String(e);txt.textContent="Błąd: "+m;})' +
+    '.PDKW_EXEC_();' +
+    '</script></body></html>';
+}
+
+function PDKW_EXEC_() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const ui = SpreadsheetApp.getUi();
 
