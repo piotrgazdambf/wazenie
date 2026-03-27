@@ -215,7 +215,14 @@ function PDKW() {
 
     // ===== tabelka jakości: inne miejsce KW vs KWG =====
     const tableStartRow = isKWG ? 19 : 24; // SHIFT +2
-    KW_BUILD_QUALITY_TABLE_(shDestKW, purposeShort, tableStartRow);
+    const forceSimpleQualityForKWG =
+      isKWG && (
+        supplierName === SUPPLIER_RYLEX ||
+        supplierName === SUPPLIER_GROJECKA ||
+        forceKWG_RYLEX ||
+        forceKWG_GROJECKA
+      );
+    KW_BUILD_QUALITY_TABLE_(shDestKW, purposeShort, tableStartRow, forceSimpleQualityForKWG);
 
     // PLS: wiersze dopisuje tylko "Prześlij kartę ważenia" (appendVarietyRowsToPLS_) z pełnymi danymi i znormalizowanym LOT – tu nic nie dopisujemy
 
@@ -375,7 +382,7 @@ function PDKW_WSG_onEdit_(e) {
  * - TWARDOŚĆ tylko S/O
  * - KALIBER <68mm % tylko O
  */
-function KW_BUILD_QUALITY_TABLE_(shKW, purposeShort, startRow) {
+function KW_BUILD_QUALITY_TABLE_(shKW, purposeShort, startRow, forceSimpleQualityForKWG) {
   const p = String(purposeShort || "").toUpperCase().trim();
 
   const startCol = 2; // B
@@ -391,12 +398,20 @@ function KW_BUILD_QUALITY_TABLE_(shKW, purposeShort, startRow) {
 
   full.setFontSize(14).setVerticalAlignment("middle");
 
-  const rows = [
-    { idx: 0, show: true,               label: "BRIX" },
-    { idx: 1, show: true,               label: "ZWROT w %" },
-    { idx: 2, show: (p === "S" || p === "O"), label: "TWARDOŚĆ" },
-    { idx: 3, show: (p === "O"),        label: "KALIBER PONIŻEJ 68mm w %" }
-  ];
+  const simpleMode = !!forceSimpleQualityForKWG;
+  const rows = simpleMode
+    ? [
+        { idx: 0, show: true, label: "BRIX" },
+        { idx: 1, show: false, label: "ZWROT w %" },
+        { idx: 2, show: (p === "S" || p === "O"), label: "TWARDOŚĆ" },
+        { idx: 3, show: false, label: "KALIBER PONIŻEJ 68mm w %" }
+      ]
+    : [
+        { idx: 0, show: true,               label: "BRIX" },
+        { idx: 1, show: true,               label: "ZWROT w %" },
+        { idx: 2, show: (p === "S" || p === "O"), label: "TWARDOŚĆ" },
+        { idx: 3, show: (p === "O"),        label: "KALIBER PONIŻEJ 68mm w %" }
+      ];
 
   rows.forEach(r => {
     const row = startRow + r.idx;
