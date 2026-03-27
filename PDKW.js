@@ -46,15 +46,8 @@ function PDKW() {
 
     const PREVIEW_LOT_CELL = "H3";
 
-    const RYLEX_LABEL_CELL = "J2";
-    const RYLEX_INPUT_CELL = "J3";
-    const RYLEX_LABEL_TEXT = "Dodatkowy numer (RYLEX)";
-    const RYLEX_COL = 10; // J
-
-    // ✅ NOWE: gdzie wpisujemy dodatkowy numer RYLEX w Karcie Ważenia
-    const RYLEX_DEST_CELL = "J7"; // <— tutaj ma wpadać
-    const RYLEX_LABEL_RANGE = "J6:K6";
-    const RYLEX_BORDER_RANGE = "J6:K7";
+    // Checkboxy WSG:
+    // J3 = RYLEX, K3 = GRÓJECKA
 
     const tz = Session.getScriptTimeZone() || "Europe/Warsaw";
 
@@ -113,7 +106,7 @@ function PDKW() {
     const supplierName = String(shWSG.getRange("D4").getDisplayValue() || "").trim();
     const purposeName  = String(shWSG.getRange("E4").getDisplayValue() || "").trim();
     let fruitName      = String(shWSG.getRange("F4").getDisplayValue() || "").trim();
-    const forceRylexByCheckbox = !!shWSG.getRange("K3").getValue();
+    const forceRylexByCheckbox = !!shWSG.getRange("J3").getValue();
     if (forceRylexByCheckbox || supplierName === SUPPLIER_RYLEX) {
       fruitName = "Jabłko";
       try { shWSG.getRange("F4").setValue("Jabłko"); } catch (e) { if (e && (e.message || e.toString)) Logger.log("PDKW force Jabłko F4: " + (e.message || e.toString())); }
@@ -125,11 +118,11 @@ function PDKW() {
     }
 
     // ===== wybór KW / KWG =====
-    // 1) Checkbox K3 (RYLEX) lub L3 (GRÓJECKA) zaznaczony -> zawsze KWG
+    // 1) Checkbox J3 (RYLEX) lub K3 (GRÓJECKA) zaznaczony -> zawsze KWG
     // 2) Dostawca GRÓJECKA MBF / MBF / RYLEX -> zawsze KWG
     // 3) Owoc (F4) inny niż Jabłko/Gruszka (np. marchewka, mango) -> KWG
-    const forceKWG_RYLEX = !!shWSG.getRange("K3").getValue();
-    const forceKWG_GROJECKA = !!shWSG.getRange("L3").getValue();
+    const forceKWG_RYLEX = !!shWSG.getRange("J3").getValue();
+    const forceKWG_GROJECKA = !!shWSG.getRange("K3").getValue();
     const fruitNorm = String(fruitName || "").toLowerCase().replace(/\s+/g, " ").trim();
     const isFruitForKW = FRUITS_TO_KW.some(f => fruitNorm === f);
     const isKWG =
@@ -141,23 +134,10 @@ function PDKW() {
       !isFruitForKW;
     let shDestKW = isKWG ? shKWG : shKW;
     if (isKWG && !shKWG) {
-      throw new Error('Brak arkusza: KWG (wymagany dla RYLEX/GRÓJECKA/MBF, przy zaznaczonym K3/L3 lub gdy w F4 wybrano owoc inny niż Jabłko/Gruszka).');
+      throw new Error('Brak arkusza: KWG (wymagany dla RYLEX/GRÓJECKA/MBF, przy zaznaczonym J3/K3 lub gdy w F4 wybrano owoc inny niż Jabłko/Gruszka).');
     }
 
-    // ===== RYLEX – J3 opcjonalny (bez blokady) =====
-    let rylexExtra = "";
-    if (supplierName === SUPPLIER_RYLEX) {
-      try { shWSG.showColumns(RYLEX_COL); } catch (e) { if (e && (e.message || e.toString)) Logger.log("PDKW showColumns: " + (e.message || e.toString())); }
-      shWSG.getRange(RYLEX_LABEL_CELL).setValue(RYLEX_LABEL_TEXT);
-
-      const extraCell = shWSG.getRange(RYLEX_INPUT_CELL);
-      const extraVal = String(extraCell.getDisplayValue() || "").trim();
-      rylexExtra = extraVal; // opcjonalnie: jeśli wpisane, przenosimy do KW/KWG
-    } else {
-      shWSG.getRange(RYLEX_LABEL_CELL).clearContent();
-      shWSG.getRange(RYLEX_INPUT_CELL).clearContent();
-      try { shWSG.hideColumns(RYLEX_COL); } catch (e) { if (e && (e.message || e.toString)) Logger.log("PDKW hideColumns: " + (e.message || e.toString())); }
-    }
+    // Brak dodatkowego kodu RYLEX (J3 to teraz checkbox RYLEX)
 
     // ===== data =====
     const dateVal = parseSheetDate(dispDate, rawDate);
@@ -216,15 +196,7 @@ function PDKW() {
     shDestKW.getRange("F6").setValue(supplierForKW);
     shDestKW.getRange("F7").setValue(lotMain);
 
-    // ✅ NOWE: RYLEX -> J6:K6 etykieta "Numer dla RYLEX", J7:K7 kod, obramowanie J6:K7
-    if (supplierName === SUPPLIER_RYLEX && rylexExtra) {
-      shDestKW.getRange(RYLEX_LABEL_RANGE).setValue("Numer dla RYLEX");
-      shDestKW.getRange(RYLEX_DEST_CELL).setValue(String(rylexExtra).trim());
-      shDestKW.getRange(RYLEX_BORDER_RANGE).setBorder(true, true, true, true, true, true);
-    } else {
-      shDestKW.getRange(RYLEX_BORDER_RANGE).clearContent();
-      shDestKW.getRange(RYLEX_BORDER_RANGE).setBorder(false, false, false, false, false, false);
-    }
+    // Brak dodatkowego kodu RYLEX do przenoszenia na KW/KWG
 
     // ===== OWOC: inne miejsce KW vs KWG =====
     const fruitRangeA1 = isKWG ? "E14:G14" : "E19:G19"; // SHIFT +2
@@ -247,8 +219,8 @@ function PDKW() {
 
     // PLS: wiersze dopisuje tylko "Prześlij kartę ważenia" (appendVarietyRowsToPLS_) z pełnymi danymi i znormalizowanym LOT – tu nic nie dopisujemy
 
-    // ===== AUTO-NUMER: następny numer w C4 (tylko gdy K3/L3 NIE zaznaczone) =====
-    const manualMode = !!shWSG.getRange("K3").getValue() || !!shWSG.getRange("L3").getValue();
+    // ===== AUTO-NUMER: następny numer w C4 (tylko gdy J3/K3 NIE zaznaczone) =====
+    const manualMode = !!shWSG.getRange("J3").getValue() || !!shWSG.getRange("K3").getValue();
     if (!manualMode) {
       const digitsOnly = delivNoRaw.replace(/[^\d]/g, "");
       const currentNum = parseInt(digitsOnly, 10);
@@ -298,11 +270,6 @@ function PDKW() {
           .build()
       );
 
-    // czyść okienko RYLEX po sukcesie
-    shWSG.getRange(RYLEX_LABEL_CELL).clearContent();
-    shWSG.getRange(RYLEX_INPUT_CELL).clearContent();
-    try { shWSG.hideColumns(RYLEX_COL); } catch (e) { if (e && (e.message || e.toString)) Logger.log("PDKW hideColumns: " + (e.message || e.toString())); }
-
     // ===== PRZEJDŹ DO KW/KWG =====
     ss.setActiveSheet(shDestKW);
     shDestKW.setActiveSelection(shDestKW.getRange("A1"));
@@ -318,8 +285,8 @@ function PDKW() {
 }
 
 /**
- * WSG K3/L3 (checkboxy):
- * - jeśli zaznaczony K3 lub L3 -> C4 czyścimy i umożliwiamy wpis ręczny
+ * WSG J3/K3 (checkboxy):
+ * - jeśli zaznaczony J3 (RYLEX) lub K3 (GRÓJECKA) -> C4 czyścimy i umożliwiamy wpis ręczny
  * - jeśli oba odznaczone -> przywracamy poprzednią wartość C4 (sprzed zaznaczenia)
  */
 function PDKW_WSG_onEdit_(e) {
@@ -329,7 +296,7 @@ function PDKW_WSG_onEdit_(e) {
 
   const row = e.range.getRow();
   const col = e.range.getColumn();
-  const isSwitchCell = (row === 3 && (col === 11 || col === 12)); // K3/L3
+  const isSwitchCell = (row === 3 && (col === 10 || col === 11)); // J3/K3
   const isSupplierCell = (row === 4 && col === 4); // D4
   const isFruitCell = (row === 4 && col === 6); // F4
   if (!isSwitchCell && !isSupplierCell && !isFruitCell) return;
@@ -337,7 +304,7 @@ function PDKW_WSG_onEdit_(e) {
   const props = PropertiesService.getDocumentProperties();
   const key = "WSG_C4_BEFORE_MANUAL_MODE";
   const c4 = sh.getRange("C4");
-  const manualMode = !!sh.getRange("K3").getValue() || !!sh.getRange("L3").getValue();
+  const manualMode = !!sh.getRange("J3").getValue() || !!sh.getRange("K3").getValue();
 
   const removeC4Protections_ = () => {
     try {
@@ -387,9 +354,9 @@ function PDKW_WSG_onEdit_(e) {
     }
   }
 
-  // RYLEX: K3 zaznaczone LUB dostawca D4 = RYLEX -> F4 zawsze "Jabłko"
+  // RYLEX: J3 zaznaczone LUB dostawca D4 = RYLEX -> F4 zawsze "Jabłko"
   const supplier = String(sh.getRange("D4").getDisplayValue() || "").trim().toUpperCase();
-  const forceJablko = !!sh.getRange("K3").getValue() || supplier === "RYLEX";
+  const forceJablko = !!sh.getRange("J3").getValue() || supplier === "RYLEX";
   if (forceJablko) {
     const f4 = sh.getRange("F4");
     const fruit = String(f4.getDisplayValue() || "").trim();
