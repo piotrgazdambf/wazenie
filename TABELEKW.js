@@ -279,12 +279,35 @@ function buildQualityTable_(sh, purposeShort, startRow) {
   try { full.breakApart(); } catch (e) { if (e && (e.message || e.toString)) Logger.log("TABELEKW buildQualityTable_ breakApart: " + (e.message || e.toString())); }
   full.clearContent();
 
-  const rows = [
-    { idx: 0, show: true,                     label: "BRIX" },
-    { idx: 1, show: true,                     label: "ZWROT w %" },
-    { idx: 2, show: (p === "S" || p === "O"), label: "TWARDOŚĆ" },
-    { idx: 3, show: (p === "O"),              label: "KALIBER PONIŻEJ 68mm w %" }
-  ];
+  // KWG + zaznaczone J3 (RYLEX) lub K3 (GRÓJECKA) w WSG:
+  // - bez ZWROT i bez KALIBER
+  // - BRIX zawsze
+  // - TWARDOŚĆ tylko dla S/O (dla P tylko BRIX)
+  let simpleKWGMode = false;
+  if (sh.getName() === "KWG") {
+    try {
+      const wsg = sh.getParent().getSheetByName("WSG");
+      if (wsg) {
+        simpleKWGMode = !!wsg.getRange("J3").getValue() || !!wsg.getRange("K3").getValue();
+      }
+    } catch (e) {
+      if (e && (e.message || e.toString)) Logger.log("TABELEKW simpleKWGMode: " + (e.message || e.toString()));
+    }
+  }
+
+  const rows = simpleKWGMode
+    ? [
+        { idx: 0, show: true,                     label: "BRIX" },
+        { idx: 1, show: false,                    label: "ZWROT w %" },
+        { idx: 2, show: (p === "S" || p === "O"), label: "TWARDOŚĆ" },
+        { idx: 3, show: false,                    label: "KALIBER PONIŻEJ 68mm w %" }
+      ]
+    : [
+        { idx: 0, show: true,                     label: "BRIX" },
+        { idx: 1, show: true,                     label: "ZWROT w %" },
+        { idx: 2, show: (p === "S" || p === "O"), label: "TWARDOŚĆ" },
+        { idx: 3, show: (p === "O"),              label: "KALIBER PONIŻEJ 68mm w %" }
+      ];
 
   let lastShownIdx = -1;
   rows.forEach(r => { if (r.show) lastShownIdx = r.idx; });
