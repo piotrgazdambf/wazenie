@@ -254,11 +254,24 @@ function KW_VALIDATE_BEFORE_EXPORT_(kw) {
   const p = String(purpose || "").toUpperCase().trim();
 
   // ile pól wymagamy w tabelce jakości (kolumna E)
+  // WYJĄTEK: KWG + zaznaczony J3 (RYLEX) lub K3 (GRÓJECKA) w WSG:
+  // wymagamy tylko BRIX i TWARDOŚĆ (2 pola): E19/E20, E25/E26, E31/E32, E37/E38
   let requiredCount = 2;
-  if (p === "S") requiredCount = 3;
-  else if (p === "O") requiredCount = 4;
-  else if (p === "P") requiredCount = 2;
-  else requiredCount = 2;
+  let forceSimpleKWGValidation = false;
+  if (sheetName === "KWG") {
+    try {
+      const wsg = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("WSG");
+      if (wsg) forceSimpleKWGValidation = !!wsg.getRange("J3").getValue() || !!wsg.getRange("K3").getValue();
+    } catch (e) {
+      if (e && (e.message || e.toString)) Logger.log("KW_VALIDATE_BEFORE_EXPORT_ WSG flags: " + (e.message || e.toString()));
+    }
+  }
+  if (!forceSimpleKWGValidation) {
+    if (p === "S") requiredCount = 3;
+    else if (p === "O") requiredCount = 4;
+    else if (p === "P") requiredCount = 2;
+    else requiredCount = 2;
+  }
 
   const layout = typeof getLayout_ === "function" ? getLayout_(sheetName) : null;
   const starts = layout
