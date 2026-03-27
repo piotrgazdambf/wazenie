@@ -21,6 +21,8 @@ function PDKW() {
     HtmlService.createHtmlOutput(PDKW_PROGRESS_HTML_()).setWidth(420).setHeight(150),
     "PDKW"
   );
+  // Logika PDKW działa bezpośrednio (jak wcześniej), pasek jest tylko wizualny.
+  PDKW_EXEC_();
 }
 
 function PDKW_PROGRESS_HTML_() {
@@ -38,7 +40,6 @@ function PDKW_PROGRESS_HTML_() {
     '</div><script>' +
     'var f=document.getElementById("f"),s=document.getElementById("s"),st=Date.now(),dur=5000;' +
     'function a(){var p=Math.min(100,Math.round((Date.now()-st)/dur*100));f.style.width=p+"%";s.textContent=p<100?("Przetwarzanie... "+p+"%"):"Gotowe. Zamykanie...";if(p<100)setTimeout(a,80);else setTimeout(function(){google.script.host.close();},220);}a();' +
-    'google.script.run.PDKW_EXEC_();' +
     '</script></body></html>';
 }
 
