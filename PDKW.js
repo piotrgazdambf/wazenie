@@ -399,32 +399,31 @@ function KW_BUILD_QUALITY_TABLE_(shKW, purposeShort, startRow, forceSimpleQualit
   full.setFontSize(14).setVerticalAlignment("middle");
 
   const simpleMode = !!forceSimpleQualityForKWG;
-  const rows = simpleMode
+  const defs = simpleMode
     ? [
-        { idx: 0, show: true, label: "BRIX" },
-        { idx: 1, show: false, label: "ZWROT w %" },
-        { idx: 2, show: (p === "S" || p === "O"), label: "TWARDOŚĆ" },
-        { idx: 3, show: false, label: "KALIBER PONIŻEJ 68mm w %" }
+        { show: true,                     label: "BRIX" },
+        { show: (p === "S" || p === "O"), label: "TWARDOŚĆ" }
       ]
     : [
-        { idx: 0, show: true,               label: "BRIX" },
-        { idx: 1, show: true,               label: "ZWROT w %" },
-        { idx: 2, show: (p === "S" || p === "O"), label: "TWARDOŚĆ" },
-        { idx: 3, show: (p === "O"),        label: "KALIBER PONIŻEJ 68mm w %" }
+        { show: true,                     label: "BRIX" },
+        { show: true,                     label: "ZWROT w %" },
+        { show: (p === "S" || p === "O"), label: "TWARDOŚĆ" },
+        { show: (p === "O"),              label: "KALIBER PONIŻEJ 68mm w %" }
       ];
 
-  rows.forEach(r => {
-    const row = startRow + r.idx;
-    if (!r.show) return;
+  let visualRow = 0;
+  defs.forEach(d => {
+    if (!d.show) return;
+    const row = startRow + visualRow;
 
     shKW.getRange(row, startCol)
-      .setValue(r.idx + 1)
+      .setValue(visualRow + 1)
       .setFontWeight("bold")
       .setHorizontalAlignment("center");
 
     const labelCell = shKW.getRange(row, startCol + 1, 1, 2);
     labelCell.merge();
-    labelCell.setValue(r.label);
+    labelCell.setValue(d.label);
     labelCell.setFontWeight("bold");
     labelCell.setHorizontalAlignment("left");
     labelCell.setWrap(true);
@@ -434,5 +433,15 @@ function KW_BUILD_QUALITY_TABLE_(shKW, purposeShort, startRow, forceSimpleQualit
     valueCell.setWrap(true);
 
     shKW.getRange(row, startCol, 1, numCols).setBorder(true, true, true, true, true, true);
+    visualRow++;
   });
+
+  // wyczyść i odramuj nieużyte wiersze, żeby nie zostawały puste obszary
+  for (let i = visualRow; i < 4; i++) {
+    const row = startRow + i;
+    const rowRange = shKW.getRange(row, startCol, 1, numCols);
+    try { rowRange.breakApart(); } catch (e) {}
+    rowRange.clearContent();
+    rowRange.setBorder(false, false, false, false, false, false);
+  }
 }

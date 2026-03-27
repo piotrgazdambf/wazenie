@@ -178,7 +178,16 @@ function adjustRightPriceRows_(sh, purposeShortOptional) {
     : getPurposeShortFromLot_(sh);
 
   const isObieranie = (String(p).toUpperCase() === "O");
-  const shouldHide = !isObieranie; // tylko O pokazuje
+  let simpleKWGMode = false;
+  if (sheetName === "KWG") {
+    try {
+      const wsg = sh.getParent().getSheetByName("WSG");
+      if (wsg) simpleKWGMode = !!wsg.getRange("J3").getValue() || !!wsg.getRange("K3").getValue();
+    } catch (e) {
+      if (e && (e.message || e.toString)) Logger.log("TABELEKW adjustRightPriceRows_ simpleKWGMode: " + (e.message || e.toString()));
+    }
+  }
+  const shouldHide = simpleKWGMode || !isObieranie; // w trybie uproszczonym zawsze ukryj
 
   const ranges = getPriceRanges_(sheetName);
   ranges.forEach(a1 => {
@@ -295,47 +304,49 @@ function buildQualityTable_(sh, purposeShort, startRow) {
     }
   }
 
-  const rows = simpleKWGMode
+  const defs = simpleKWGMode
     ? [
-        { idx: 0, show: true,                     label: "BRIX" },
-        { idx: 1, show: false,                    label: "ZWROT w %" },
-        { idx: 2, show: (p === "S" || p === "O"), label: "TWARDOŚĆ" },
-        { idx: 3, show: false,                    label: "KALIBER PONIŻEJ 68mm w %" }
+        { sourceIdx: 0, show: true,                     label: "BRIX" },
+        { sourceIdx: 2, show: (p === "S" || p === "O"), label: "TWARDOŚĆ" }
       ]
     : [
-        { idx: 0, show: true,                     label: "BRIX" },
-        { idx: 1, show: true,                     label: "ZWROT w %" },
-        { idx: 2, show: (p === "S" || p === "O"), label: "TWARDOŚĆ" },
-        { idx: 3, show: (p === "O"),              label: "KALIBER PONIŻEJ 68mm w %" }
+        { sourceIdx: 0, show: true,                     label: "BRIX" },
+        { sourceIdx: 1, show: true,                     label: "ZWROT w %" },
+        { sourceIdx: 2, show: (p === "S" || p === "O"), label: "TWARDOŚĆ" },
+        { sourceIdx: 3, show: (p === "O"),              label: "KALIBER PONIŻEJ 68mm w %" }
       ];
 
-  let lastShownIdx = -1;
-  rows.forEach(r => { if (r.show) lastShownIdx = r.idx; });
+  let visualRow = 0;
+  defs.forEach(d => {
+    if (!d.show) return;
 
-  rows.forEach(r => {
-    const rr = startRow + r.idx;
+    const rr = startRow + visualRow;
     const rowRange = sh.getRange(rr, startCol, 1, numCols);
 
-    if (!r.show) {
-      rowRange.clearContent();
-      rowRange.setBorder(false, false, false, false, false, false);
-      return;
-    }
-
-    sh.getRange(rr, startCol).setValue(r.idx + 1);
+    sh.getRange(rr, startCol).setValue(visualRow + 1);
 
     const labelCell = sh.getRange(rr, startCol + 1, 1, 2);
     labelCell.merge();
-    labelCell.setValue(r.label);
+    labelCell.setValue(d.label);
 
     const valueCell = sh.getRange(rr, startCol + 3);
-    if (oldE[r.idx] !== "" && oldE[r.idx] !== null) valueCell.setValue(oldE[r.idx]);
+    if (oldE[d.sourceIdx] !== "" && oldE[d.sourceIdx] !== null) valueCell.setValue(oldE[d.sourceIdx]);
 
     rowRange.setBorder(true, true, true, true, true, true);
+    visualRow++;
   });
 
-  if (lastShownIdx >= 0) {
-    const rr = startRow + lastShownIdx;
+  // wyczyść i odramuj nieużyte wiersze, żeby nie było "pustych tabelek"
+  for (let i = visualRow; i < 4; i++) {
+    const rr = startRow + i;
+    const rowRange = sh.getRange(rr, startCol, 1, numCols);
+    try { rowRange.breakApart(); } catch (e) {}
+    rowRange.clearContent();
+    rowRange.setBorder(false, false, false, false, false, false);
+  }
+
+  if (visualRow > 0) {
+    const rr = startRow + visualRow - 1;
     sh.getRange(rr, startCol, 1, numCols).setBorder(null, null, true, null, null, null);
   }
 }
