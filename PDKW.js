@@ -16,56 +16,14 @@
  *************************************************************************************************************************/
 
 function PDKW() {
-  const ui = SpreadsheetApp.getUi();
-  const html = PDKW_LOADING_HTML_();
-  ui.showModalDialog(HtmlService.createHtmlOutput(html).setWidth(420).setHeight(180), "PDKW");
-}
-
-function PDKW_LOADING_HTML_() {
-  return '<!DOCTYPE html><html><head><meta charset="utf-8"/>' +
-    '<style>' +
-    'body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;background:#f3f5f8;color:#1f2937}' +
-    '.wrap{padding:18px}' +
-    '.title{font-size:14px;font-weight:600;margin-bottom:10px}' +
-    '.bar{height:14px;background:#e5e7eb;border-radius:8px;overflow:hidden}' +
-    '.fill{height:100%;width:0;background:linear-gradient(90deg,#2563eb,#1d4ed8);transition:width .08s linear}' +
-    '.txt{margin-top:10px;font-size:12px;color:#4b5563}' +
-    '</style></head><body><div class="wrap">' +
-    '<div class="title">Trwa przesyłanie danych PDKW...</div>' +
-    '<div class="bar"><div id="fill" class="fill"></div></div>' +
-    '<div id="txt" class="txt">Uruchamianie...</div>' +
-    '</div><script>' +
-    'var done=false,start=Date.now(),dur=5000;' +
-    'var fill=document.getElementById("fill"),txt=document.getElementById("txt");' +
-    'function tick(){var p=Math.min(100,Math.round(((Date.now()-start)/dur)*100));fill.style.width=p+"%";' +
-    'if(p<100){txt.textContent="Przetwarzanie... "+p+"%";setTimeout(tick,80);}else{txt.textContent=done?"Gotowe. Zamykanie...":"Finalizowanie...";if(done)setTimeout(function(){google.script.host.close();},250);}}' +
-    'tick();' +
-    'setTimeout(function(){if(!done){txt.textContent="Zamykanie...";google.script.host.close();}},8000);' +
-    'google.script.run.withSuccessHandler(function(r){done=true;' +
-    'if(r&&r.ok){' +
-      'var wait=Math.max(0,dur-(Date.now()-start));' +
-      'setTimeout(function(){' +
-        'google.script.run.withSuccessHandler(function(){txt.textContent="Gotowe. Zamykanie...";setTimeout(function(){google.script.host.close();},250);})' +
-        '.withFailureHandler(function(){txt.textContent="Gotowe. Zamykanie...";setTimeout(function(){google.script.host.close();},250);})' +
-        '.PDKW_SWITCH_TO_SHEET_(r.targetSheet || "");' +
-      '},wait);' +
-    '}else{txt.textContent="Błąd: "+(r&&r.err?r.err:"Nieznany błąd");setTimeout(function(){google.script.host.close();},1200);}' +
-    '})' +
-    '.withFailureHandler(function(e){done=true;var m=(e&&e.message)?e.message:String(e);txt.textContent="Błąd: "+m;setTimeout(function(){google.script.host.close();},250);})' +
-    '.PDKW_EXEC_(true);' +
-    '</script></body></html>';
-}
-
-function PDKW_EXEC_(fromDialog) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const ui = SpreadsheetApp.getUi();
 
   // ===== LOCK =====
   const lock = LockService.getDocumentLock();
   if (!lock.tryLock(30000)) {
-    if (fromDialog) return { ok: false, err: "Skrypt już się wykonuje. Spróbuj ponownie za chwilę." };
     ui.alert("Skrypt już się wykonuje. Spróbuj ponownie za chwilę.");
-    return { ok: false, err: "Skrypt już się wykonuje. Spróbuj ponownie za chwilę." };
+    return;
   }
 
   try {
@@ -325,25 +283,12 @@ function PDKW_EXEC_(fromDialog) {
     SpreadsheetApp.flush();
 
     ss.toast(`PDKW: przeniesiono dane do ${shDestKW.getName()} ✅ | LOT: ${lotMain}`, "OK", 5);
-    return { ok: true, targetSheet: shDestKW.getName() };
 
   } catch (err) {
-    const msg = (err && err.message ? err.message : String(err));
-    if (!fromDialog) SpreadsheetApp.getUi().alert("Błąd: " + msg);
-    return { ok: false, err: msg };
+    SpreadsheetApp.getUi().alert("Błąd: " + (err && err.message ? err.message : String(err)));
   } finally {
     try { lock.releaseLock(); } catch (e) { if (e && (e.message || e.toString)) Logger.log("PDKW releaseLock: " + (e.message || e.toString())); }
   }
-}
-
-function PDKW_SWITCH_TO_SHEET_(sheetName) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sh = ss.getSheetByName(String(sheetName || "").trim());
-  if (!sh) return false;
-  ss.setActiveSheet(sh);
-  sh.setActiveSelection(sh.getRange("A1"));
-  SpreadsheetApp.flush();
-  return true;
 }
 
 /**
