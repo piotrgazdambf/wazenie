@@ -83,6 +83,10 @@ function KW_EXPORT_WITH_PROGRESS_() {
     HtmlService.createHtmlOutput(KW_EXPORT_PROGRESS_HTML_()).setWidth(440).setHeight(170),
     "Przesyłanie karty ważenia"
   );
+}
+
+/** Wywoływane z popupu paska ładowania (asynchronicznie), żeby UI zdążyło się wyświetlić. */
+function KW_EXPORT_RUN_FROM_PROGRESS_() {
   KW_EXPORT_CREATE_FILE_FROM_KW_AND_SELECT_IN_VIEW();
 }
 
@@ -103,6 +107,7 @@ function KW_EXPORT_PROGRESS_HTML_() {
     'function tick(){var p=Math.min(100,Math.round((Date.now()-st)/dur*100));f.style.width=p+"%";' +
     'if(p<100){t.textContent="Przetwarzanie... "+p+"%";setTimeout(tick,120);}else{t.textContent="Gotowe. Zamykanie...";setTimeout(function(){google.script.host.close();},300);}}' +
     'tick();' +
+    'setTimeout(function(){google.script.run.withFailureHandler(function(e){t.textContent="Błąd: "+(e&&e.message?e.message:String(e));}).KW_EXPORT_RUN_FROM_PROGRESS_();},120);' +
     '</script></body></html>';
 }
 
