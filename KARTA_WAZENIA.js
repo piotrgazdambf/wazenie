@@ -79,7 +79,7 @@ function KW_onOpenMenu_() {
 /** Wrapper UI: pokazuje pasek 19s i uruchamia właściwy eksport karty ważenia. */
 function KW_EXPORT_WITH_PROGRESS_() {
   const ui = SpreadsheetApp.getUi();
-  ui.showModalDialog(
+  ui.showModelessDialog(
     HtmlService.createHtmlOutput(KW_EXPORT_PROGRESS_HTML_()).setWidth(440).setHeight(170),
     "Przesyłanie karty ważenia"
   );
