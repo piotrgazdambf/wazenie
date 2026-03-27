@@ -40,21 +40,25 @@ function PDKW_LOADING_HTML_() {
     'function tick(){var p=Math.min(100,Math.round(((Date.now()-start)/dur)*100));fill.style.width=p+"%";' +
     'if(p<100){txt.textContent="Przetwarzanie... "+p+"%";setTimeout(tick,80);}else{txt.textContent=done?"Gotowe. Zamykanie...":"Finalizowanie...";if(done)setTimeout(function(){google.script.host.close();},250);}}' +
     'tick();' +
-    'google.script.run.withSuccessHandler(function(){done=true;if(Date.now()-start>=dur){txt.textContent="Gotowe. Zamykanie...";setTimeout(function(){google.script.host.close();},250);}})' +
-    '.withFailureHandler(function(e){var m=(e&&e.message)?e.message:String(e);txt.textContent="Błąd: "+m;})' +
-    '.PDKW_EXEC_();' +
+    'setTimeout(function(){if(!done){txt.textContent="Zamykanie...";google.script.host.close();}},5600);' +
+    'google.script.run.withSuccessHandler(function(r){done=true;' +
+    'if(r&&r.ok){txt.textContent="Gotowe. Zamykanie...";}else{txt.textContent="Błąd: "+(r&&r.err?r.err:"Nieznany błąd");}' +
+    'setTimeout(function(){google.script.host.close();},250);})' +
+    '.withFailureHandler(function(e){done=true;var m=(e&&e.message)?e.message:String(e);txt.textContent="Błąd: "+m;setTimeout(function(){google.script.host.close();},250);})' +
+    '.PDKW_EXEC_(true);' +
     '</script></body></html>';
 }
 
-function PDKW_EXEC_() {
+function PDKW_EXEC_(fromDialog) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const ui = SpreadsheetApp.getUi();
 
   // ===== LOCK =====
   const lock = LockService.getDocumentLock();
   if (!lock.tryLock(30000)) {
+    if (fromDialog) return { ok: false, err: "Skrypt już się wykonuje. Spróbuj ponownie za chwilę." };
     ui.alert("Skrypt już się wykonuje. Spróbuj ponownie za chwilę.");
-    return;
+    return { ok: false, err: "Skrypt już się wykonuje. Spróbuj ponownie za chwilę." };
   }
 
   try {
@@ -314,9 +318,12 @@ function PDKW_EXEC_() {
     SpreadsheetApp.flush();
 
     ss.toast(`PDKW: przeniesiono dane do ${shDestKW.getName()} ✅ | LOT: ${lotMain}`, "OK", 5);
+    return { ok: true };
 
   } catch (err) {
-    SpreadsheetApp.getUi().alert("Błąd: " + (err && err.message ? err.message : String(err)));
+    const msg = (err && err.message ? err.message : String(err));
+    if (!fromDialog) SpreadsheetApp.getUi().alert("Błąd: " + msg);
+    return { ok: false, err: msg };
   } finally {
     try { lock.releaseLock(); } catch (e) { if (e && (e.message || e.toString)) Logger.log("PDKW releaseLock: " + (e.message || e.toString())); }
   }
