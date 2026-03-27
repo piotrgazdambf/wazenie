@@ -306,6 +306,11 @@ function KW_VALIDATE_BEFORE_EXPORT_(kw) {
     else if (p === "O") requiredCount = 4;
     else if (p === "P") requiredCount = 2;
     else requiredCount = 2;
+  } else {
+    // KWG + RYLEX/GRÓJECKA:
+    // P -> tylko BRIX (1 pole)
+    // S/O -> BRIX + TWARDOŚĆ (2 pola)
+    requiredCount = (p === "P") ? 1 : 2;
   }
 
   const layout = typeof getLayout_ === "function" ? getLayout_(sheetName) : null;
