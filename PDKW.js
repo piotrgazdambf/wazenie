@@ -144,7 +144,7 @@ function PDKW() {
       throw new Error('Brak arkusza: KWG (wymagany dla RYLEX/GRÓJECKA/MBF, przy zaznaczonym K3/L3 lub gdy w F4 wybrano owoc inny niż Jabłko/Gruszka).');
     }
 
-    // ===== RYLEX – wymagany J3 =====
+    // ===== RYLEX – J3 opcjonalny (bez blokady) =====
     let rylexExtra = "";
     if (supplierName === SUPPLIER_RYLEX) {
       try { shWSG.showColumns(RYLEX_COL); } catch (e) { if (e && (e.message || e.toString)) Logger.log("PDKW showColumns: " + (e.message || e.toString())); }
@@ -152,20 +152,7 @@ function PDKW() {
 
       const extraCell = shWSG.getRange(RYLEX_INPUT_CELL);
       const extraVal = String(extraCell.getDisplayValue() || "").trim();
-
-      if (!extraVal) {
-        ss.toast("RYLEX: uzupełnij dodatkowy numer w WSG!J3 przed wysyłką.", "RYLEX – wymagane", 6);
-        SpreadsheetApp.flush();
-        shWSG.setActiveSelection(RYLEX_INPUT_CELL);
-
-        ui.alert(
-          "RYLEX – wymagane",
-          "Nie można przesłać do Karty Ważenia bez uzupełnienia pola 'Dodatkowy numer (RYLEX)' (WSG!J3).",
-          ui.ButtonSet.OK
-        );
-        return;
-      }
-      rylexExtra = extraVal;
+      rylexExtra = extraVal; // opcjonalnie: jeśli wpisane, przenosimy do KW/KWG
     } else {
       shWSG.getRange(RYLEX_LABEL_CELL).clearContent();
       shWSG.getRange(RYLEX_INPUT_CELL).clearContent();
