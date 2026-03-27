@@ -16,6 +16,33 @@
  *************************************************************************************************************************/
 
 function PDKW() {
+  const ui = SpreadsheetApp.getUi();
+  ui.showModelessDialog(
+    HtmlService.createHtmlOutput(PDKW_PROGRESS_HTML_()).setWidth(420).setHeight(150),
+    "PDKW"
+  );
+}
+
+function PDKW_PROGRESS_HTML_() {
+  return '<!DOCTYPE html><html><head><meta charset="utf-8"/>' +
+    '<style>' +
+    'body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;background:#f5f7fb;color:#1f2937}' +
+    '.wrap{padding:14px 16px}.t{font-size:14px;font-weight:600;margin-bottom:10px}' +
+    '.bar{height:12px;background:#e5e7eb;border-radius:999px;overflow:hidden}' +
+    '.fill{height:100%;width:0;background:linear-gradient(90deg,#2563eb,#1d4ed8)}' +
+    '.s{margin-top:8px;font-size:12px;color:#4b5563}' +
+    '</style></head><body><div class="wrap">' +
+    '<div class="t">Trwa przesyłanie danych PDKW...</div>' +
+    '<div class="bar"><div id="f" class="fill"></div></div>' +
+    '<div id="s" class="s">Start...</div>' +
+    '</div><script>' +
+    'var f=document.getElementById("f"),s=document.getElementById("s"),st=Date.now(),dur=5000;' +
+    'function a(){var p=Math.min(100,Math.round((Date.now()-st)/dur*100));f.style.width=p+"%";s.textContent=p<100?("Przetwarzanie... "+p+"%"):"Gotowe. Zamykanie...";if(p<100)setTimeout(a,80);else setTimeout(function(){google.script.host.close();},220);}a();' +
+    'google.script.run.PDKW_EXEC_();' +
+    '</script></body></html>';
+}
+
+function PDKW_EXEC_() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const ui = SpreadsheetApp.getUi();
 
