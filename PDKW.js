@@ -40,10 +40,17 @@ function PDKW_LOADING_HTML_() {
     'function tick(){var p=Math.min(100,Math.round(((Date.now()-start)/dur)*100));fill.style.width=p+"%";' +
     'if(p<100){txt.textContent="Przetwarzanie... "+p+"%";setTimeout(tick,80);}else{txt.textContent=done?"Gotowe. Zamykanie...":"Finalizowanie...";if(done)setTimeout(function(){google.script.host.close();},250);}}' +
     'tick();' +
-    'setTimeout(function(){if(!done){txt.textContent="Zamykanie...";google.script.host.close();}},5600);' +
+    'setTimeout(function(){if(!done){txt.textContent="Zamykanie...";google.script.host.close();}},8000);' +
     'google.script.run.withSuccessHandler(function(r){done=true;' +
-    'if(r&&r.ok){txt.textContent="Gotowe. Zamykanie...";}else{txt.textContent="Błąd: "+(r&&r.err?r.err:"Nieznany błąd");}' +
-    'setTimeout(function(){google.script.host.close();},250);})' +
+    'if(r&&r.ok){' +
+      'var wait=Math.max(0,dur-(Date.now()-start));' +
+      'setTimeout(function(){' +
+        'google.script.run.withSuccessHandler(function(){txt.textContent="Gotowe. Zamykanie...";setTimeout(function(){google.script.host.close();},250);})' +
+        '.withFailureHandler(function(){txt.textContent="Gotowe. Zamykanie...";setTimeout(function(){google.script.host.close();},250);})' +
+        '.PDKW_SWITCH_TO_SHEET_(r.targetSheet || "");' +
+      '},wait);' +
+    '}else{txt.textContent="Błąd: "+(r&&r.err?r.err:"Nieznany błąd");setTimeout(function(){google.script.host.close();},1200);}' +
+    '})' +
     '.withFailureHandler(function(e){done=true;var m=(e&&e.message)?e.message:String(e);txt.textContent="Błąd: "+m;setTimeout(function(){google.script.host.close();},250);})' +
     '.PDKW_EXEC_(true);' +
     '</script></body></html>';
@@ -318,7 +325,7 @@ function PDKW_EXEC_(fromDialog) {
     SpreadsheetApp.flush();
 
     ss.toast(`PDKW: przeniesiono dane do ${shDestKW.getName()} ✅ | LOT: ${lotMain}`, "OK", 5);
-    return { ok: true };
+    return { ok: true, targetSheet: shDestKW.getName() };
 
   } catch (err) {
     const msg = (err && err.message ? err.message : String(err));
@@ -327,6 +334,16 @@ function PDKW_EXEC_(fromDialog) {
   } finally {
     try { lock.releaseLock(); } catch (e) { if (e && (e.message || e.toString)) Logger.log("PDKW releaseLock: " + (e.message || e.toString())); }
   }
+}
+
+function PDKW_SWITCH_TO_SHEET_(sheetName) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sh = ss.getSheetByName(String(sheetName || "").trim());
+  if (!sh) return false;
+  ss.setActiveSheet(sh);
+  sh.setActiveSelection(sh.getRange("A1"));
+  SpreadsheetApp.flush();
+  return true;
 }
 
 /**
