@@ -72,43 +72,8 @@ function onEdit(e) {
 function KW_onOpenMenu_() {
   SpreadsheetApp.getUi()
     .createMenu(KW_EXPORT_CONFIG.MENU_NAME)
-    .addItem(KW_EXPORT_CONFIG.MENU_ITEM, "KW_EXPORT_WITH_PROGRESS_")
+    .addItem(KW_EXPORT_CONFIG.MENU_ITEM, "KW_EXPORT_CREATE_FILE_FROM_KW_AND_SELECT_IN_VIEW")
     .addToUi();
-}
-
-/** Wrapper UI: pokazuje pasek 19s i uruchamia właściwy eksport karty ważenia. */
-function KW_EXPORT_WITH_PROGRESS_() {
-  const ui = SpreadsheetApp.getUi();
-  ui.showModelessDialog(
-    HtmlService.createHtmlOutput(KW_EXPORT_PROGRESS_HTML_()).setWidth(440).setHeight(170),
-    "Przesyłanie karty ważenia"
-  );
-}
-
-/** Wywoływane z popupu paska ładowania (asynchronicznie), żeby UI zdążyło się wyświetlić. */
-function KW_EXPORT_RUN_FROM_PROGRESS_() {
-  KW_EXPORT_CREATE_FILE_FROM_KW_AND_SELECT_IN_VIEW();
-}
-
-function KW_EXPORT_PROGRESS_HTML_() {
-  return '<!DOCTYPE html><html><head><meta charset="utf-8"/>' +
-    '<style>' +
-    'body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;background:#f4f6fb;color:#1f2937}' +
-    '.wrap{padding:16px 18px}.title{font-size:14px;font-weight:600;margin-bottom:10px}' +
-    '.bar{height:12px;background:#e5e7eb;border-radius:999px;overflow:hidden}' +
-    '.fill{height:100%;width:0;background:linear-gradient(90deg,#2563eb,#1d4ed8)}' +
-    '.txt{margin-top:8px;font-size:12px;color:#4b5563}' +
-    '</style></head><body><div class="wrap">' +
-    '<div class="title">Trwa przesyłanie karty ważenia...</div>' +
-    '<div class="bar"><div id="f" class="fill"></div></div>' +
-    '<div id="t" class="txt">Start...</div>' +
-    '</div><script>' +
-    'var f=document.getElementById("f"),t=document.getElementById("t"),st=Date.now(),dur=19000;' +
-    'function tick(){var p=Math.min(100,Math.round((Date.now()-st)/dur*100));f.style.width=p+"%";' +
-    'if(p<100){t.textContent="Przetwarzanie... "+p+"%";setTimeout(tick,120);}else{t.textContent="Gotowe. Zamykanie...";setTimeout(function(){google.script.host.close();},300);}}' +
-    'tick();' +
-    'setTimeout(function(){google.script.run.withFailureHandler(function(e){t.textContent="Błąd: "+(e&&e.message?e.message:String(e));}).KW_EXPORT_RUN_FROM_PROGRESS_();},120);' +
-    '</script></body></html>';
 }
 
 /******************* MENU: STANY SUROWCOWE *******************/
