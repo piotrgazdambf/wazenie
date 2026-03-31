@@ -76,6 +76,11 @@ function KW_onOpenMenu_() {
     .addToUi();
 }
 
+// Kompatybilność: jeśli w arkuszu był stary wpis menu, przekieruj go na właściwą funkcję.
+function KW_EXPORT_WITH_PROGRESS_() {
+  return KW_EXPORT_CREATE_FILE_FROM_KW_AND_SELECT_IN_VIEW();
+}
+
 /******************* MENU: STANY SUROWCOWE *******************/
 function STANY_onOpenMenu_() {
   SpreadsheetApp.getUi()
