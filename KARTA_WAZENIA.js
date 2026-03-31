@@ -479,7 +479,20 @@ function KW_EXPORT_CREATE_FILE_FROM_KW_AND_SELECT_IN_VIEW() {
     const exportUrl = newSS.getUrl();
 
     // 8) PLS
-    const firstLotText = appendVarietyRowsToPLS_(ss, kw, exportUrl, deliveryNo, supplierName);
+    // NR DOSTAWY do PLS bierzemy z WSG!C4 (po sekwencji), z fallbackiem do deliveryNo
+    let deliveryNoForPLS = String(deliveryNo || "").trim();
+    try {
+      const shWSG = ss.getSheetByName("WSG");
+      if (shWSG) {
+        const c4Raw = String(shWSG.getRange("C4").getDisplayValue() || "").trim();
+        const c4Digits = c4Raw.replace(/[^\d]/g, "");
+        if (c4Digits) deliveryNoForPLS = String(parseInt(c4Digits, 10));
+      }
+    } catch (e) {
+      if (e && (e.message || e.toString)) Logger.log("KW_EXPORT deliveryNoForPLS from WSG C4: " + (e.message || e.toString()));
+    }
+
+    const firstLotText = appendVarietyRowsToPLS_(ss, kw, exportUrl, deliveryNoForPLS, supplierName);
 
     // 9) PS
     appendVarietyRowsToPS_(ss, kw);
