@@ -260,6 +260,9 @@ function PDKW_EXEC_() {
       const digitsOnly = delivNoRaw.replace(/[^\d]/g, "");
       const currentNum = parseInt(digitsOnly, 10);
       let nextNum = isNaN(currentNum) ? 1 : (currentNum + 1);
+      // Auto-odzyskanie numeracji z PLS, gdy C4 zostało cofnięte (np. na 0001)
+      const nextFromPLS = PDKW_getNextDeliveryFromPLS_(shPLS);
+      if (nextFromPLS > nextNum) nextNum = nextFromPLS;
       if (nextNum > 9999) nextNum = 1;
 
       c4Cell.setValue(nextNum);
@@ -316,6 +319,29 @@ function PDKW_EXEC_() {
     SpreadsheetApp.getUi().alert("Błąd: " + (err && err.message ? err.message : String(err)));
   } finally {
     try { lock.releaseLock(); } catch (e) { if (e && (e.message || e.toString)) Logger.log("PDKW releaseLock: " + (e.message || e.toString())); }
+  }
+}
+
+/** Zwraca kolejny numer dostawy na podstawie max z kolumny C w PLS. */
+function PDKW_getNextDeliveryFromPLS_(shPLS) {
+  try {
+    if (!shPLS) return 1;
+    const lastRow = shPLS.getLastRow();
+    if (lastRow < 3) return 1;
+    const vals = shPLS.getRange(3, 3, lastRow - 2, 1).getDisplayValues(); // kolumna C
+    let maxNo = 0;
+    for (let i = 0; i < vals.length; i++) {
+      const raw = String(vals[i][0] || "").trim();
+      if (!raw) continue;
+      const digits = raw.replace(/[^\d]/g, "");
+      if (!digits) continue;
+      const n = parseInt(digits, 10);
+      if (!isNaN(n) && n > maxNo) maxNo = n;
+    }
+    return Math.min(9999, maxNo + 1);
+  } catch (e) {
+    if (e && (e.message || e.toString)) Logger.log("PDKW_getNextDeliveryFromPLS_: " + (e.message || e.toString()));
+    return 1;
   }
 }
 
