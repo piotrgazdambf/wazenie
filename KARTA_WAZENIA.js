@@ -751,6 +751,13 @@ function STANY_PRZESLIJ_DO_STANOW() {
   // W którym wierszu w PLS wpisać STATUS: z PLS = ten wiersz, z PLS_VIEW = szukamy tego samego LOT w PLS (wiersz na dole)
   let shPLS = null;
   let plsRow = 0;
+  const normalizeLotForCompare_ = (x) => {
+    // przy importRange mogą dojść różnice w białych znakach / spacji przed myślnikiem
+    return String(x || "")
+      .trim()
+      .replace(/\u00A0/g, " ")
+      .replace(/\s*-\s*/g, "-");
+  };
   if (sheetName === KW_EXPORT_CONFIG.PLS_SHEET_NAME) {
     shPLS = sh;
     plsRow = dataRow;
@@ -761,8 +768,10 @@ function STANY_PRZESLIJ_DO_STANOW() {
       const dataStart = 4;
       if (lastR >= dataStart) {
         const colA = shPLS.getRange(dataStart, 1, lastR, 1).getDisplayValues();
+        const needle = normalizeLotForCompare_(lotQR);
         for (let r = colA.length - 1; r >= 0; r--) {
-          if (String(colA[r][0] || "").trim() === lotQR) {
+          const cellLot = normalizeLotForCompare_(colA[r][0]);
+          if (cellLot === needle) {
             plsRow = dataStart + r;
             break;
           }
